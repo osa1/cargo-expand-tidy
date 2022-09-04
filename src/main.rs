@@ -33,7 +33,8 @@ fn process_file(file: &mut syn::File) {
         }
     }
 
-    // Turn automatic derives into derive attributes, remove automatic derives
+    // Turn automatic derives into derive attributes, remove automatic derives and structural
+    // partial eq
     let new_items: Vec<syn::Item> = old_items
         .into_iter()
         .enumerate()
@@ -54,6 +55,9 @@ fn process_file(file: &mut syn::File) {
                     if is_automatically_derived(&impl_.attrs) {
                         return None;
                     }
+                    if is_structural_partial_eq_derive(impl_) {
+                        return None;
+                    }
                 }
                 Some(item)
             }
@@ -68,6 +72,15 @@ fn is_automatically_derived(attrs: &[syn::Attribute]) -> bool {
     attrs
         .iter()
         .any(|attr| (&attr.path).into_token_stream().to_string() == attr_str)
+}
+
+fn is_structural_partial_eq_derive(item: &syn::ItemImpl) -> bool {
+    if let Some((_, path, _)) = &item.trait_ {
+        return path.into_token_stream().to_string()
+            == quote!(::core::marker::StructuralPartialEq).to_string();
+    }
+
+    false
 }
 
 fn make_item_derive_attribute(derives: &[syn::Path]) -> syn::Attribute {
